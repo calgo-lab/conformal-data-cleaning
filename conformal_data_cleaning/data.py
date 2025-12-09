@@ -121,16 +121,8 @@ def read_dataset(
 
     # AutoGluon can't handle the "new" data types.
     # For this reason, we infer objects but do not cast further
-    X: pd.DataFrame = (
-        pd.read_csv(X_path)
-        .squeeze("columns")
-        .convert_dtypes(convert_integer=False, convert_floating=False, convert_boolean=False)
-    )
-    y: pd.Series = (
-        pd.read_csv(y_path)
-        .squeeze("columns")
-        .convert_dtypes(convert_integer=False, convert_floating=False, convert_boolean=False)
-    )
+    X: pd.DataFrame = pd.read_csv(X_path).squeeze("columns").convert_dtypes(convert_integer=False, convert_floating=False, convert_boolean=False)
+    y: pd.Series = pd.read_csv(y_path).squeeze("columns").convert_dtypes(convert_integer=False, convert_floating=False, convert_boolean=False)
 
     # fix dtype for classification tasks
     # jenga relies on `categorical` dtype for this

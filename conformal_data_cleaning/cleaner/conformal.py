@@ -142,9 +142,7 @@ class ConformalAutoGluonCleaner(BaseCleaner):
             # outlier if value is not in prediction interval, i.e., smaller than lower (index 0)
             # or larger than upper (index 2) quantile
             elif column in self._numerical_columns:
-                outliers[column] = (data[column] <= prediction_set_or_quantiles[:, 0]) | (
-                    data[column] >= prediction_set_or_quantiles[:, 2]
-                )
+                outliers[column] = (data[column] <= prediction_set_or_quantiles[:, 0]) | (data[column] >= prediction_set_or_quantiles[:, 2])
                 _outlier_predictions[column] = prediction_set_or_quantiles[outliers[column], 1]
 
             else:

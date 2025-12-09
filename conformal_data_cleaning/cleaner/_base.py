@@ -7,7 +7,7 @@ import pandas as pd
 from pandas.api.types import is_numeric_dtype
 from sklearn.utils.validation import check_is_fitted
 
-from ..utils import is_categorical, set_seed
+from ..utils import is_categorical, seed_and_get_generator
 
 
 class CleanerError(Exception):
@@ -19,13 +19,11 @@ class BaseCleaner(ABC):
 
     def __init__(self, seed: Optional[int] = None):
         self._seed = seed
-        set_seed(self._seed)
+        self._random_generator = seed_and_get_generator(seed=self._seed)
 
     def _guess_dtypes(self, data: pd.DataFrame) -> None:
         self._categorical_columns = [c for c in data.columns if is_categorical(data[c])]
-        self._numerical_columns = [
-            c for c in data.columns if is_numeric_dtype(data[c]) and c not in self._categorical_columns
-        ]
+        self._numerical_columns = [c for c in data.columns if is_numeric_dtype(data[c]) and c not in self._categorical_columns]
 
         if len(data.columns) != (len(self._categorical_columns) + len(self._numerical_columns)):
             raise Exception(

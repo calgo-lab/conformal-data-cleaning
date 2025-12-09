@@ -1,37 +1,44 @@
-from random import seed as random_seed
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-from numpy.typing import ArrayLike
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
 
 
-def set_seed(seed: Optional[int]) -> None:
-    if seed:
-        random_seed(seed)
-        np.random.seed(seed)
+def seed_and_get_generator(seed: int | None) -> np.random.Generator:
+    return np.random.default_rng(seed=seed) if seed is not None else np.random.default_rng()
 
 
-def is_categorical(column: ArrayLike, n_samples: int = 1000, max_unique_fraction: float = 0.2) -> bool:
+def is_categorical(
+    column: pd.Series,
+    n_samples: int = 1000,
+    max_unique_fraction: float = 0.2,
+    random_generator: Generator | None = None,
+) -> bool:
     """Check if `column` type is categorical.
 
     A heuristic to check whether a `column` is categorical:
     a column is considered categorical (as opposed to a plain text column)
     if the relative cardinality is `max_unique_fraction` or less.
-    Thanks to:
-        https://github.com/awslabs/datawig/blob/f641342d05e95485ed88503d3efd9c3cca3eb7ab/datawig/simple_imputer.py#L147
 
     Args:
         column (ArrayLike): pandas `Series` containing strings
         n_samples (int, optional): number of samples used for heuristic. Defaults to 1000.
         max_unique_fraction (float, optional): maximum relative cardinality. Defaults to 0.2.
+        random_generator (Generator, optional): random generator. Defaults to None.
 
     Returns:
         bool: `True` if the column is categorical according to the heuristic.
     """
-    column = np.array(column)
-    replace = len(column) < n_samples
-    sample = np.random.choice(column, n_samples, replace=replace)
-    unique_samples = pd.unique(sample)
+    if random_generator is None:
+        random_generator = np.random.default_rng()
 
-    return (unique_samples.shape[0] / n_samples) <= max_unique_fraction
+    column = np.array(column)
+    n_samples = min(n_samples, len(column))
+    values, counts = np.unique(column, return_counts=True)
+    sample = random_generator.choice(a=values, p=counts / counts.sum(), size=n_samples)
+    unique_samples = np.unique(sample)
+
+    return unique_samples.shape[0] / n_samples <= max_unique_fraction
