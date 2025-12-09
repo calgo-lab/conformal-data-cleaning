@@ -1,10 +1,6 @@
-from typing import TYPE_CHECKING
-
 import numpy as np
 import pandas as pd
-
-if TYPE_CHECKING:
-    from numpy.random import Generator
+from numpy.random import Generator
 
 
 def seed_and_get_generator(seed: int | None) -> np.random.Generator:

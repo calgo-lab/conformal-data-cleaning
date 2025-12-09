@@ -6,7 +6,7 @@ from typing import Any, Optional, Union
 
 import numpy as np
 import pandas as pd
-from conformal_inference.models.automl.autogluon import (
+from conformal_inference.autogluon import (
     ConformalAutoGluonClassifier,
     ConformalQuantileAutoGluonRegressor,
 )
@@ -97,16 +97,14 @@ class ConformalAutoGluonCleaner(BaseCleaner):
             hyperparameter_tune_kwargs["num_trials"] = hyperparameter_tune_kwargs.get("num_trials", 10)
             fit_params["hyperparameter_tune_kwargs"] = hyperparameter_tune_kwargs
 
-            # we want roughly 1000 data points for calibration
-            calibration_size = 1000 / data.shape[0]
+
             self.predictors_[column].fit(
                 X=data,
-                calibration_size=kwargs.get("ci_calibration_size", calibration_size),
                 fit_params=fit_params,
             )
 
             # save memory during training
-            self.predictors_[column]._predictor.unpersist_models()
+            #self.predictors_[column]._predictor.unpersist_models()
 
         return self
 

@@ -9,7 +9,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.utils.validation import check_is_fitted
 
-from dissertation_experiments.data import split_columns_into_categorical_and_numerical
+from .data import split_columns_into_categorical_and_numerical
 
 from .utils import calculate_q_hat, check_in_range
 

@@ -17,7 +17,7 @@ class CleanerError(Exception):
 class BaseCleaner(ABC):
     _outlier_predictions: dict
 
-    def __init__(self, seed: Optional[int] = None):
+    def __init__(self, seed: Optional[int] = None) -> None:
         self._seed = seed
         self._random_generator = seed_and_get_generator(seed=self._seed)
 
@@ -26,20 +26,26 @@ class BaseCleaner(ABC):
         self._numerical_columns = [c for c in data.columns if is_numeric_dtype(data[c]) and c not in self._categorical_columns]
 
         if len(data.columns) != (len(self._categorical_columns) + len(self._numerical_columns)):
-            raise Exception(
+            msg = (
                 f"There are {len(data.columns)} columns but found "
                 f"{len(self._categorical_columns)} categorical and "
-                f"{len(self._numerical_columns)} numerical columns.",
+                f"{len(self._numerical_columns)} numerical columns."
+            )
+            raise Exception(
+                msg,
             )
 
     def fit(self, data: pd.DataFrame, target_columns: Optional[list] = None, **kwargs: dict[str, Any]) -> BaseCleaner:
         if target_columns is None:
             target_columns = data.columns.to_list()
 
-        if not type(target_columns) == list:
-            raise CleanerError(
+        if type(target_columns) != list:
+            msg = (
                 f"Parameter 'target_column' need to be of type list\
-                    but is '{type(target_columns)}'",
+                    but is '{type(target_columns)}'"
+            )
+            raise CleanerError(
+                msg,
             )
 
         if any([column not in data.columns for column in target_columns]):
@@ -54,16 +60,16 @@ class BaseCleaner(ABC):
         self,
         data: pd.DataFrame,
         **kwargs: dict[str, Any],
-    ) -> tuple[pd.DataFrame, pd.DataFrame, Optional[pd.DataFrame]]:
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         check_is_fitted(self, ["predictors_", "target_columns_"])
 
         missing_mask = data[self.target_columns_].isna()
-        data_without_outliers, prediction_sets = self._remove_outliers_method(data=data.copy(), **kwargs)
+        data_without_outliers, _ = self._remove_outliers_method(data=data.copy(), **kwargs)
 
         missing_mask_outliers_removed = data_without_outliers[self.target_columns_].isna()
         outlier_mask = missing_mask_outliers_removed & ~missing_mask
 
-        return data_without_outliers, outlier_mask, prediction_sets
+        return data_without_outliers, outlier_mask
 
     def impute(self, data: pd.DataFrame, **kwargs: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame]:
         check_is_fitted(self, ["predictors_", "target_columns_"])
@@ -77,8 +83,8 @@ class BaseCleaner(ABC):
         self,
         data: pd.DataFrame,
         **kwargs: dict[str, Any],
-    ) -> tuple[pd.DataFrame, pd.DataFrame, Optional[pd.DataFrame]]:
-        data_without_outliers, outlier_mask, prediction_sets = self.remove_outliers(data, **kwargs)
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        data_without_outliers, outlier_mask = self.remove_outliers(data, **kwargs)
 
         if kwargs.get("reuse_intermediate", True):
             for column in self.target_columns_:
@@ -89,7 +95,7 @@ class BaseCleaner(ABC):
 
         delattr(self, "_outlier_predictions")
 
-        return cleaned_data, cleaned_mask, prediction_sets
+        return cleaned_data, cleaned_mask
 
     @abstractmethod
     def _fit_method(self, data: pd.DataFrame, **kwargs: dict[str, Any]) -> BaseCleaner:
