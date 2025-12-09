@@ -1,47 +1,60 @@
-[tool.poetry]
+[project]
 name = "conformal-data-cleaning"
 version = "0.1.0"
-description = ""
-authors = ["Sebastian Jäger <git@sebastian-jaeger.me>"]
+description = "TODO"
+readme = "README.md"
+authors = [
+    { name = "Sebastian Jäger", email = "git@sebastian-jaeger.me" },
+]
+requires-python = ">=3.9,<3.13"
+dependencies = [
+    "autogluon-tabular>=1.4.0",
+    "numpy>=2.0.2",
+    "pandas>=2.3.3",
+]
 
-[tool.poetry.scripts]
-run-experiment = "scripts.run_experiment:start"
-
-[tool.poetry.dependencies]
-python = "^3.9,<3.10"
-conformal-inference = { git = "https://github.com/se-jaeger/conformal-inference", tag = "cleaning-paper" }
-jenga = { git = "https://github.com/schelterlabs/jenga", tag = "cleaning-paper" }
-pyod = "^1.0.5"
-autogluon = { version = "^0.8.2", extras = ["all"] }
-scikit-learn = "<1.3.0"
-
-
-[tool.poetry.group.dev.dependencies]
-seaborn = "^0.11.2"
-jupyterlab = "^3.3.3"
-pytest = "^5.2"
-mypy = "^1.6.1"
-ruff = "^0.1.2"
-tqdm = "^4.66.1"
-ipywidgets = "^8.1.0"
+[project.scripts]
+conformal-data-cleaning = "conformal_data_cleaning:main"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.mypy]
-python_version = "3.9"
-disallow_untyped_defs = true
-ignore_missing_imports = true
+requires = ["uv_build>=0.9.16,<0.10.0"]
+build-backend = "uv_build"
 
 [tool.ruff]
+line-length = 160
 target-version = "py39"
-line-length = 120
 fix = true
 extend-include = ["*.ipynb"]
-select = ["ALL"]
-ignore = ["D100", "D104", "ISC003", "TD003"]
 
+[tool.ruff.lint]
+select = [
+    "ALL", # Include all the rules, including new ones
+]
+ignore = [
+    "FIX", # Temporary developer notes should not break actions
+    "COM812", # For compatibility with ruff-format
+    "ISC001", # For compatibility with ruff-format
+    "S311", # We do not require cryptographically-sound randomness
+    "D100", # Do not document public modules
+    "D104", # Do not document public packages
+    "TD003", # Allow TODOs without links
+    "ISC003", # Do not implicietly concatenate strings
+    "S101", # Allow testing methods
+]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = [
+    "F401", # Unused imports in __init__ files can make sense
+]
+
+[tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ty.environment]
+python-version = "3.9"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.8",
+    "ty>=0.0.1a32",
+]
