@@ -35,7 +35,10 @@ class BaseCleaner(ABC):
                 msg,
             )
 
-    def fit(self, data: pd.DataFrame, target_columns: Optional[list] = None, **kwargs: dict[str, Any]) -> BaseCleaner:
+    def fit(self, data: pd.DataFrame,
+        target_columns: Optional[list] = None,
+        **kwargs: dict[str, Any]
+    ) -> BaseCleaner:
         if target_columns is None:
             target_columns = data.columns.to_list()
 
@@ -71,7 +74,10 @@ class BaseCleaner(ABC):
 
         return data_without_outliers, outlier_mask
 
-    def impute(self, data: pd.DataFrame, **kwargs: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def impute(self,
+               data: pd.DataFrame,
+               **kwargs: dict[str, Any]
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         check_is_fitted(self, ["predictors_", "target_columns_"])
 
         missing_mask = data[self.target_columns_].isna()

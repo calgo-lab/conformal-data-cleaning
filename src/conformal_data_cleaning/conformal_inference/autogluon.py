@@ -68,9 +68,13 @@ class ConformalQuantileAutoGluonRegressor(ConformalQuantileRegressor):
         ]
         y_calibration = calibration_data_[self._target_column]
 
-        self._predictor.fit(training_data_, **fit_params, calibrate=False)
+        if isinstance(self._predictor, list):
+            print(self._predictor)
+
+        self._predictor[0][1].fit(training_data_, **fit_params)
+        self._predictor[1][1].fit(training_data_, **fit_params)
         non_conformity_scores = self._calculate_nonconformity_scores(
-            y_hat=self._predictor.predict(X_calibration, as_pandas=False),
+            y_hat=self._predictor[1][1].predict(X_calibration, as_pandas=False),
             y=y_calibration,
         )
 
@@ -90,13 +94,13 @@ class ConformalQuantileAutoGluonRegressor(ConformalQuantileRegressor):
     ) -> tuple[NDArray, float]:
         check_is_fitted(self, attributes=["_q_hat"])
 
-        if confidence_level is not None:
-            msg = f"This implementation of 'ConformalQuantileRegressor' does not allow to set 'confidence_level' for prediction. It was set to {self._confidence_level} during initialization."
-            raise ValueError(
-                msg,
-            )
+        # if confidence_level is not None:  # This is a stupid catch, just use the class varaible and dont allow the confidence level to be passed in if it will never be used.
+        #     msg = f"This implementation of 'ConformalQuantileRegressor' does not allow to set 'confidence_level' for prediction. It was set to {self._confidence_level} during initialization."
+        #     raise ValueError(
+        #         msg,
+        #     )
 
-        y_hat_quantiles: NDArray = self._predictor.predict(X, **predict_params, as_pandas=False)
+        y_hat_quantiles: NDArray = self._predictor[1][1].predict(X, **predict_params, as_pandas=False)
 
         return y_hat_quantiles, self._q_hat
 
@@ -151,16 +155,17 @@ class ConformalAutoGluonClassifier(ConformalClassifier):
         # later on, we expect it to be a NDArray
         y_calibration = calibration_data_[self._target_column].to_numpy()
 
-        self._predictor.fit(training_data_, **fit_params, calibrate=False)
+        self._predictor[0][1].fit(training_data_, **fit_params)
+        self._predictor[1][1].fit(training_data_, **fit_params)
 
         nonconformity_scores = self._calculate_nonconformity_scores(
-            y_hat=self._predictor.predict_proba(X_calibration, as_pandas=False),
+            y_hat=self._predictor[1][1].predict_proba(X_calibration, as_pandas=False),
         )
 
         return y_calibration, nonconformity_scores
 
     def _get_label_to_index_mapping(self) -> dict[Any, int]:
-        return {x: index for index, x in enumerate(self._predictor.class_labels)}
+        return {x: index for index, x in enumerate(self._predictor[1][1].class_labels)}
 
     def _predict_and_calculate_nonconformity_scores(
         self,
@@ -168,7 +173,7 @@ class ConformalAutoGluonClassifier(ConformalClassifier):
         predict_params: dict = {},
         **kwargs: dict[str, Any],
     ) -> tuple[NDArray, NDArray]:
-        y_hat = self._predictor.predict_proba(X, **predict_params, as_pandas=False)
+        y_hat = self._predictor[1][1].predict_proba(X, **predict_params, as_pandas=False)
         nonconformity_scores = self._calculate_nonconformity_scores(y_hat=y_hat)
 
         return y_hat, nonconformity_scores

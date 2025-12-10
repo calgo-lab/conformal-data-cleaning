@@ -73,7 +73,7 @@ class ConformalPredictor(ABC):
             ],
             sparse_threshold=0,
         )
-        self._predictor = Pipeline([("preprocess", feature_transformation), ("predictor", self._predictor)])
+        self._predictor = ([("preprocess", feature_transformation), ("predictor", self._predictor)])  # This is always expected to be true
         return self
 
     @abstractmethod

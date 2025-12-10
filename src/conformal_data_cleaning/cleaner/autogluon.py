@@ -80,22 +80,22 @@ class ConformalAutoGluonCleaner(BaseCleaner):
             fit_params = kwargs.get("ci_ag_fit_params", {})
 
             # Refit/Disk space settings
-            fit_params["refit_full"] = True
-            fit_params["keep_only_best"] = True
-            fit_params["set_best_to_refit_full"] = True
-            fit_params["fit_weighted_ensemble"] = False
+            #fit_params["refit_full"] = True
+            #fit_params["keep_only_best"] = True
+            #fit_params["set_best_to_refit_full"] = True
+            #fit_params["fit_weighted_ensemble"] = False
 
             # Bagging/Stacking settings
-            fit_params["auto_stack"] = False
-            fit_params["num_bag_folds"] = 0
-            fit_params["num_stack_levels"] = 0
+            #fit_params["auto_stack"] = False
+            #fit_params["num_bag_folds"] = 0
+            #fit_params["num_stack_levels"] = 0
 
             # HPO settings
-            hyperparameter_tune_kwargs = fit_params.pop("hyperparameter_tune_kwargs", {})
-            hyperparameter_tune_kwargs["searcher"] = "random"
-            hyperparameter_tune_kwargs["scheduler"] = "local"
-            hyperparameter_tune_kwargs["num_trials"] = hyperparameter_tune_kwargs.get("num_trials", 10)
-            fit_params["hyperparameter_tune_kwargs"] = hyperparameter_tune_kwargs
+            # hyperparameter_tune_kwargs = fit_params.pop("hyperparameter_tune_kwargs", {})
+            # hyperparameter_tune_kwargs["searcher"] = "random"
+            # hyperparameter_tune_kwargs["scheduler"] = "local"
+            # hyperparameter_tune_kwargs["num_trials"] = hyperparameter_tune_kwargs.get("num_trials", 10)
+            # fit_params["hyperparameter_tune_kwargs"] = hyperparameter_tune_kwargs
 
 
             self.predictors_[column].fit(
@@ -108,6 +108,7 @@ class ConformalAutoGluonCleaner(BaseCleaner):
 
         return self
 
+    # Caution: spaghetti code w/o documentation!!!
     def _remove_outliers_method(
         self,
         data: pd.DataFrame,
@@ -121,8 +122,9 @@ class ConformalAutoGluonCleaner(BaseCleaner):
         for column in self.target_columns_:
             # if empty prediction sets should be treated as inliers,
             # then empty prediction sets are OK.
-            prediction_set_or_quantiles = self.predictors_[column].predict(data, sorted=True, allow_empty_set=True)
-            prediction_sets[column] = prediction_set_or_quantiles
+
+            y_hat, other_thing = self.predictors_[column].predict(data, confidence_level=self._confidence_level, sorted=True, allow_empty_set=True)  # Mystery returns! is it a set or quantiles?
+            prediction_sets[column] = y_hat
 
             # outlier if value is not in prediction set except `empty_pred_sets_are_inliers`
             # then only if pre
@@ -133,15 +135,15 @@ class ConformalAutoGluonCleaner(BaseCleaner):
                     # to calculate the "size" of a prediction set, we need to count non-null values
                     & (np.count_nonzero(~pd.isna(prediction_set)) == 0)
                     else value not in prediction_set
-                    for value, prediction_set in zip(data[column], prediction_set_or_quantiles)
+                    for value, prediction_set in zip(data[column], y_hat)
                 ]
-                _outlier_predictions[column] = prediction_set_or_quantiles[outliers[column], 0]
+                _outlier_predictions[column] = y_hat[outliers[column], 0]
 
             # outlier if value is not in prediction interval, i.e., smaller than lower (index 0)
-            # or larger than upper (index 2) quantile
+            # or larger than upper (index 1) quantile
             elif column in self._numerical_columns:
-                outliers[column] = (data[column] <= prediction_set_or_quantiles[:, 0]) | (data[column] >= prediction_set_or_quantiles[:, 2])
-                _outlier_predictions[column] = prediction_set_or_quantiles[outliers[column], 1]
+                outliers[column] = (data[column] <= y_hat[:, 0]) | (data[column] >= y_hat[:, 1])
+                _outlier_predictions[column] = y_hat[outliers[column], 1]
 
             else:
                 logger.warning("This should be checked before fit process starts..")
@@ -159,15 +161,24 @@ class ConformalAutoGluonCleaner(BaseCleaner):
         for column in self.target_columns_:
             missing_mask = data[column].isna()
             if missing_mask.any():
-                predictions = self.predictors_[column].predict(data[missing_mask], sorted=True, allow_empty_set=False)
+                # predictor returns a tuple; unpack it
+                predictions_tuple = self.predictors_[column].predict(
+                    data[missing_mask],
+                    confidence_level=self._confidence_level,
+                    sorted=True,
+                    allow_empty_set=False
+                )
 
                 if column in self._categorical_columns:
-                    # prediction sets are sorted by their softmax
-                    data.loc[missing_mask, column] = predictions[:, 0]
+                    # unpack: prediction_sets, point_estimates = tuple
+                    prediction_sets, _ = predictions_tuple
+                    # fill with the top predicted label
+                    data.loc[missing_mask, column] = [next(iter(s)) for s in prediction_sets]
 
                 elif column in self._numerical_columns:
-                    # index 1 is fitted to the 0.5 quantile
-                    data.loc[missing_mask, column] = predictions[:, 1]
+                    # unpack: intervals, point_estimates = tuple
+                    _, point_estimates = predictions_tuple
+                    data.loc[missing_mask, column] = point_estimates
 
                 else:
                     logger.warning("This should be checked before fit process starts..")
