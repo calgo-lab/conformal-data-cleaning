@@ -35,18 +35,13 @@ class BaseCleaner(ABC):
                 msg,
             )
 
-    def fit(self, data: pd.DataFrame,
-        target_columns: Optional[list] = None,
-        **kwargs: dict[str, Any]
-    ) -> BaseCleaner:
+    def fit(self, data: pd.DataFrame, target_columns: Optional[list] = None, **kwargs: dict[str, Any]) -> BaseCleaner:
         if target_columns is None:
             target_columns = data.columns.to_list()
 
         if type(target_columns) != list:
-            msg = (
-                f"Parameter 'target_column' need to be of type list\
+            msg = f"Parameter 'target_column' need to be of type list\
                     but is '{type(target_columns)}'"
-            )
             raise CleanerError(
                 msg,
             )
@@ -74,10 +69,7 @@ class BaseCleaner(ABC):
 
         return data_without_outliers, outlier_mask
 
-    def impute(self,
-               data: pd.DataFrame,
-               **kwargs: dict[str, Any]
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def impute(self, data: pd.DataFrame, **kwargs: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame]:
         check_is_fitted(self, ["predictors_", "target_columns_"])
 
         missing_mask = data[self.target_columns_].isna()
@@ -92,6 +84,7 @@ class BaseCleaner(ABC):
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         data_without_outliers, outlier_mask = self.remove_outliers(data, **kwargs)
 
+        # TODO: make this first-class citizen look into diss code
         if kwargs.get("reuse_intermediate", True):
             for column in self.target_columns_:
                 data_without_outliers.loc[outlier_mask.loc[:, column], column] = self._outlier_predictions[column]

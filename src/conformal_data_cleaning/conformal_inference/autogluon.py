@@ -3,7 +3,6 @@ from __future__ import annotations
 from logging import getLogger
 from typing import TYPE_CHECKING, Any
 
-import numpy as np
 from autogluon.tabular import TabularPredictor
 from sklearn.model_selection import train_test_split
 from sklearn.utils.validation import check_is_fitted
@@ -63,9 +62,7 @@ class ConformalQuantileAutoGluonRegressor(ConformalQuantileRegressor):
 
         training_data_, calibration_data_ = train_test_split(X, test_size=calibration_size)
 
-        X_calibration = calibration_data_[
-            [column for column in calibration_data_.columns if column != self._target_column]
-        ]
+        X_calibration = calibration_data_[[column for column in calibration_data_.columns if column != self._target_column]]
         y_calibration = calibration_data_[self._target_column]
 
         if isinstance(self._predictor, list):
@@ -148,9 +145,7 @@ class ConformalAutoGluonClassifier(ConformalClassifier):
 
         training_data_, calibration_data_ = train_test_split(X, test_size=calibration_size)
 
-        X_calibration = calibration_data_[
-            [column for column in calibration_data_.columns if column != self._target_column]
-        ]
+        X_calibration = calibration_data_[[column for column in calibration_data_.columns if column != self._target_column]]
 
         # later on, we expect it to be a NDArray
         y_calibration = calibration_data_[self._target_column].to_numpy()
