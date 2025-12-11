@@ -2,16 +2,17 @@ from __future__ import annotations
 
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as np
 import pandas as pd
-from conformal_inference.autogluon import (
-    ConformalAutoGluonClassifier,
-    ConformalQuantileAutoGluonRegressor,
-)
 
-from ._base import BaseCleaner
+from conformal_data_cleaning.conformal_inference.autogluon import ConformalAutoGluonClassifier, ConformalQuantileAutoGluonRegressor
+
+from ._base import BaseCleaner, CleanerError
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 logger = getLogger(__name__)
 
@@ -25,24 +26,30 @@ class ConformalAutoGluonCleaner(BaseCleaner):
         super().__init__(seed=seed)
 
         if confidence_level <= 0 or confidence_level >= 1:
-            raise ValueError("Argument 'confidence_level' is not valid! Need to be: 0 <= confidence_level <= 1")
+            msg = "Argument 'confidence_level' is not valid! Need to be: 0 <= confidence_level <= 1"
+            raise ValueError(msg)
 
         self._confidence_level = confidence_level
 
-    def __del__(self) -> None:
-        for column in self.target_columns_:
-            self.predictors_[column]._predictor.unpersist_models()
-            del self.predictors_[column]._predictor, self.predictors_[column]
+    def _make_prediction(self, data: pd.DataFrame, column: Any) -> tuple[NDArray, NDArray]:
+        predictor = self.predictors_[column]
+        if type(predictor) is ConformalAutoGluonClassifier:
+            return predictor.predict(data, confidence_level=self._confidence_level)
 
-        del self.predictors_
+        if type(predictor) is ConformalQuantileAutoGluonRegressor:
+            return predictor.predict(data)
+
+        msg = f"Predictor for column '{column}' is of wrong type."
+        raise ValueError(msg)
 
     def _fit_method(self, data: pd.DataFrame, **kwargs: dict[str, Any]) -> ConformalAutoGluonCleaner:
-        self.predictors_: dict[Any, Union[ConformalAutoGluonClassifier, ConformalQuantileAutoGluonRegressor]] = {}
+        self.predictors_: dict[Any, ConformalAutoGluonClassifier | ConformalQuantileAutoGluonRegressor] = {}
 
         path_prefix = Path(kwargs.get("ci_ag_predictor_params", {}).pop("path_prefix", "AutogluonModels"))
 
         for index, column in enumerate(self.target_columns_):
-            logger.info(f"Start fitting predictor #{index + 1} of {len(self.target_columns_)}")
+            msg = f"Start fitting predictor #{index + 1} of {len(self.target_columns_)}"
+            logger.info(msg)
 
             # prepare the path where to store the models
             ci_ag_predictor_params = kwargs.get("ci_ag_predictor_params", {})
@@ -75,36 +82,15 @@ class ConformalAutoGluonCleaner(BaseCleaner):
                 )
 
             else:
-                raise Exception(f"Column '{column}' is not categorical or numerical ...")
+                msg = f"Column '{column}' is not categorical or numerical."
+                raise CleanerError(msg)
 
             fit_params = kwargs.get("ci_ag_fit_params", {})
 
-            # # Refit/Disk space settings
-            # fit_params["refit_full"] = True
-            # fit_params["keep_only_best"] = True
-            # fit_params["set_best_to_refit_full"] = True
-            # fit_params["fit_weighted_ensemble"] = False
-
-            # # Bagging/Stacking settings
-            # fit_params["auto_stack"] = False
-            # fit_params["num_bag_folds"] = 0
-            # fit_params["num_stack_levels"] = 0
-
-            # # HPO settings
-            # hyperparameter_tune_kwargs = fit_params.pop("hyperparameter_tune_kwargs", {})
-            # hyperparameter_tune_kwargs["searcher"] = "random"
-            # hyperparameter_tune_kwargs["scheduler"] = "local"
-            # hyperparameter_tune_kwargs["num_trials"] = hyperparameter_tune_kwargs.get("num_trials", 10)
-            # fit_params["hyperparameter_tune_kwargs"] = hyperparameter_tune_kwargs
-
-            # we want roughly 1000 data points for calibration
             self.predictors_[column].fit(
                 X=data,
                 fit_params=fit_params,
             )
-
-            # save memory during training
-            #self.predictors_[column]._predictor.unpersist_models()
 
         return self
 
@@ -112,66 +98,57 @@ class ConformalAutoGluonCleaner(BaseCleaner):
         self,
         data: pd.DataFrame,
         **kwargs: dict[str, Any],
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    ) -> pd.DataFrame:
         outliers = {}
-        _outlier_predictions = {}
-        empty_pred_sets_are_inliers: bool = kwargs.get("empty_pred_sets_are_inliers", False)  # type:ignore
+        self._outlier_predictions = {}
 
-        prediction_sets = {}
+        # NOTE: this is stored for in depth evaluations not because it's necessary for the cleaning
+        self._prediction_sets = {}
+
         for column in self.target_columns_:
-            # if empty prediction sets should be treated as inliers,
-            # then empty prediction sets are OK.
-            prediction_set_or_quantiles = self.predictors_[column].predict(data, confidence_level=self._confidence_level, sorted=True, allow_empty_set=True)
-            prediction_sets[column] = prediction_set_or_quantiles
+            msg = f"Remove outliers for column '{column}'."
+            logger.debug(msg)
 
-            # outlier if value is not in prediction set except `empty_pred_sets_are_inliers`
-            # then only if pre
+            conformalized_prediction, y_prediction = self._make_prediction(data=data, column=column)
+            self._prediction_sets[column] = conformalized_prediction
+
+            # outlier if value is not in prediction set or prediction set is empty
             if column in self._categorical_columns:
                 outliers[column] = [
                     False
-                    if empty_pred_sets_are_inliers
                     # to calculate the "size" of a prediction set, we need to count non-null values
-                    & (np.count_nonzero(~pd.isna(prediction_set)) == 0)
+                    if np.count_nonzero(~pd.isna(prediction_set)) == 0
                     else value not in prediction_set
-                    for value, prediction_set in zip(data[column], prediction_set_or_quantiles)
+                    for value, prediction_set in zip(data[column], conformalized_prediction)
                 ]
-                _outlier_predictions[column] = prediction_set_or_quantiles[outliers[column], 0]
 
             # outlier if value is not in prediction interval, i.e., smaller than lower (index 0)
-            # or larger than upper (index 2) quantile
+            # or larger than upper (index 1) quantile
             elif column in self._numerical_columns:
-                outliers[column] = (data[column] <= prediction_set_or_quantiles[:, 0]) | (
-                    data[column] >= prediction_set_or_quantiles[:, 2]
-                )
-                _outlier_predictions[column] = prediction_set_or_quantiles[outliers[column], 1]
+                outliers[column] = (data[column] <= conformalized_prediction[:, 0]) | (data[column] >= conformalized_prediction[:, 1])
 
             else:
-                logger.warning("This should be checked before fit process starts..")
+                msg = f"Column '{column}' is neither categorical nor numerical. This should be checked when fitting and causes very likely downstream issues."
+                logger.warning(msg)
+
+            self._outlier_predictions[column] = y_prediction
 
         # calculate all outliers THEN remove them
         # avoid to introduce missing values that need to be handled by the predictors for prediction
         for column in self.target_columns_:
             data.loc[outliers[column], column] = np.nan
 
-        self._outlier_predictions = _outlier_predictions
-
-        return data, prediction_sets
+        return data
 
     def _impute_method(self, data: pd.DataFrame, **kwargs: dict[str, Any]) -> pd.DataFrame:
         for column in self.target_columns_:
+            msg = f"Impute missing values for column '{column}'."
+            logger.debug(msg)
+
             missing_mask = data[column].isna()
             if missing_mask.any():
-                predictions = self.predictors_[column].predict(data[missing_mask], sorted=True, allow_empty_set=False)
+                _, y_prediction = self._make_prediction(data=data[missing_mask], column=column)
 
-                if column in self._categorical_columns:
-                    # prediction sets are sorted by their softmax
-                    data.loc[missing_mask, column] = predictions[:, 0]
-
-                elif column in self._numerical_columns:
-                    # index 1 is fitted to the 0.5 quantile
-                    data.loc[missing_mask, column] = predictions[:, 1]
-
-                else:
-                    logger.warning("This should be checked before fit process starts..")
+                data.loc[missing_mask, column] = y_prediction
 
         return data

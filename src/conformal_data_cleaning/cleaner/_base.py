@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from logging import getLogger
+from typing import TYPE_CHECKING, Any, Optional
 
-import pandas as pd
 from pandas.api.types import is_numeric_dtype
 from sklearn.utils.validation import check_is_fitted
 
-from ..utils import is_categorical, seed_and_get_generator
+from conformal_data_cleaning.utils import is_categorical, seed_and_get_generator
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+logger = getLogger(__name__)
 
 
 class CleanerError(Exception):
@@ -28,26 +33,24 @@ class BaseCleaner(ABC):
         if len(data.columns) != (len(self._categorical_columns) + len(self._numerical_columns)):
             msg = (
                 f"There are {len(data.columns)} columns but found "
-                f"{len(self._categorical_columns)} categorical and "
-                f"{len(self._numerical_columns)} numerical columns."
+                + f"{len(self._categorical_columns)} categorical and "
+                + f"{len(self._numerical_columns)} numerical columns."
             )
-            raise Exception(
-                msg,
-            )
+            raise Exception(msg)
 
-    def fit(self, data: pd.DataFrame, target_columns: Optional[list] = None, **kwargs: dict[str, Any]) -> BaseCleaner:
+    def fit(self, data: pd.DataFrame, target_columns: list | None = None, **kwargs: dict[str, Any]) -> BaseCleaner:
         if target_columns is None:
             target_columns = data.columns.to_list()
 
-        if type(target_columns) != list:
-            msg = f"Parameter 'target_column' need to be of type list\
-                    but is '{type(target_columns)}'"
+        if type(target_columns) is not list:
+            msg = f"Parameter 'target_column' need to be of type list but is '{type(target_columns)}'"
             raise CleanerError(
                 msg,
             )
 
-        if any([column not in data.columns for column in target_columns]):
-            raise CleanerError(f"All target columns ('{target_columns}') must be in: {', '.join(data.columns)}")
+        if any(column not in data.columns for column in target_columns):
+            msg = f"All target columns ('{target_columns}') must be in: {', '.join(data.columns)}"
+            raise CleanerError(msg)
 
         self.target_columns_ = target_columns
 
@@ -61,8 +64,12 @@ class BaseCleaner(ABC):
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         check_is_fitted(self, ["predictors_", "target_columns_"])
 
+        # Reset potential previous runs
+        if hasattr(self, "_outlier_predictions"):
+            delattr(self, "_outlier_predictions")
+
         missing_mask = data[self.target_columns_].isna()
-        data_without_outliers, _ = self._remove_outliers_method(data=data.copy(), **kwargs)
+        data_without_outliers = self._remove_outliers_method(data=data.copy(), **kwargs)
 
         missing_mask_outliers_removed = data_without_outliers[self.target_columns_].isna()
         outlier_mask = missing_mask_outliers_removed & ~missing_mask
@@ -80,19 +87,21 @@ class BaseCleaner(ABC):
     def transform(
         self,
         data: pd.DataFrame,
+        separate_steps: bool = False,
         **kwargs: dict[str, Any],
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         data_without_outliers, outlier_mask = self.remove_outliers(data, **kwargs)
 
-        # TODO: make this first-class citizen look into diss code
-        if kwargs.get("reuse_intermediate", True):
+        if not separate_steps:
             for column in self.target_columns_:
-                data_without_outliers.loc[outlier_mask.loc[:, column], column] = self._outlier_predictions[column]
+                mask = outlier_mask.loc[:, column]
+                data_without_outliers.loc[mask, column] = self._outlier_predictions[column][mask]
+
+        else:
+            logger.debug("Do not reuse intermediate calculations of correct values. This is equivalent to call 'remove_outliers' and 'impute' in sequence.")
 
         cleaned_data, imputed_mask = self.impute(data_without_outliers, **kwargs)
         cleaned_mask = imputed_mask | outlier_mask
-
-        delattr(self, "_outlier_predictions")
 
         return cleaned_data, cleaned_mask
 
@@ -105,7 +114,7 @@ class BaseCleaner(ABC):
         self,
         data: pd.DataFrame,
         **kwargs: dict[str, Any],
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    ) -> pd.DataFrame:
         pass
 
     @abstractmethod

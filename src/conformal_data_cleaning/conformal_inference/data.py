@@ -54,8 +54,6 @@ def is_categorical(column: pd.Series, n_samples: int = 1000, max_unique_fraction
     return unique_samples.shape[0] / n_samples <= max_unique_fraction
 
 
-
-
 def guess_task_type(column: pd.Series) -> TaskType:
     with warnings.catch_warnings():
         warnings.filterwarnings(

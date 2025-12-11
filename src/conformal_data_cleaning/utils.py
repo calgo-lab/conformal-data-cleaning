@@ -1,6 +1,12 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
-import pandas as pd
-from numpy.random import Generator
+
+if TYPE_CHECKING:
+    import pandas as pd
+    from numpy.random import Generator
 
 
 def seed_and_get_generator(seed: int | None) -> np.random.Generator:

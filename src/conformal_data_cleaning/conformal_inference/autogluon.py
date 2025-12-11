@@ -3,7 +3,6 @@ from __future__ import annotations
 from logging import getLogger
 from typing import TYPE_CHECKING, Any
 
-import numpy as np
 from autogluon.tabular import TabularPredictor
 from sklearn.model_selection import train_test_split
 from sklearn.utils.validation import check_is_fitted
@@ -36,7 +35,8 @@ class ConformalQuantileAutoGluonRegressor(ConformalQuantileRegressor):
 
         for to_remove in ["label", "problem_type", "quantile_levels"]:
             if predictor_params.pop(to_remove, None) is not None:
-                logger.warning(f"Ignoring '{to_remove}' of given 'predictor_params' since it is already defined.")
+                msg = f"Ignoring '{to_remove}' of given 'predictor_params' since it is already defined."
+                logger.warning(msg)
 
         super().__init__(
             TabularPredictor(
@@ -63,9 +63,7 @@ class ConformalQuantileAutoGluonRegressor(ConformalQuantileRegressor):
 
         training_data_, calibration_data_ = train_test_split(X, test_size=calibration_size)
 
-        X_calibration = calibration_data_[
-            [column for column in calibration_data_.columns if column != self._target_column]
-        ]
+        X_calibration = calibration_data_[[column for column in calibration_data_.columns if column != self._target_column]]
         y_calibration = calibration_data_[self._target_column]
 
         self._predictor.fit(training_data_, **fit_params, calibrate=False)
@@ -76,10 +74,9 @@ class ConformalQuantileAutoGluonRegressor(ConformalQuantileRegressor):
 
         # returning `None` isn't a problem here.
         # This only happens when no nonconformity scores are given.
-        self._q_hat = calculate_q_hat(non_conformity_scores, self._confidence_level)  # type: ignore
-
+        self._q_hat = calculate_q_hat(non_conformity_scores, self._confidence_level)
         # bootstrap the necessary attributes
-        self.calibration_nonconformity_scores_ = {}  # type: ignore
+        self.calibration_nonconformity_scores_ = {}
 
     def _predict_and_calculate_half_interval(
         self,
@@ -90,11 +87,11 @@ class ConformalQuantileAutoGluonRegressor(ConformalQuantileRegressor):
     ) -> tuple[NDArray, float]:
         check_is_fitted(self, attributes=["_q_hat"])
 
-        # if confidence_level is not None:
-        #     msg = f"This implementation of 'ConformalQuantileRegressor' does not allow to set 'confidence_level' for prediction. It was set to {self._confidence_level} during initialization."
-        #     raise ValueError(
-        #         msg,
-        #     )
+        if confidence_level is not None:
+            msg = f"This implementation of 'ConformalQuantileRegressor' does not allow to set 'confidence_level' for prediction. It was set to {self._confidence_level} during initialization."
+            raise ValueError(
+                msg,
+            )
 
         y_hat_quantiles = self._predictor.predict(X, **predict_params, as_pandas=False)
 
@@ -105,11 +102,11 @@ class ConformalAutoGluonClassifier(ConformalClassifier):
     _predictor: TabularPredictor
 
     def __init__(self, target_column: str, conditional: bool = True, predictor_params: dict = {}) -> None:
-        if type(predictor_params) != dict:
+        if type(predictor_params) is not dict:
             msg = "'predictor_params' need to be dictionary of arguments."
             raise ValueError(msg)
 
-        if type(target_column) != str:
+        if type(target_column) is not str:
             msg = "'target_column' need to be of type 'str'."
             raise ValueError(msg)
 
@@ -117,7 +114,8 @@ class ConformalAutoGluonClassifier(ConformalClassifier):
 
         for to_remove in ["label"]:
             if predictor_params.pop(to_remove, None) is not None:
-                logger.warning(f"Ignoring '{to_remove}' of given 'predictor_params' since it is already defined.")
+                msg = f"Ignoring '{to_remove}' of given 'predictor_params' since it is already defined."
+                logger.warning(msg)
 
         super().__init__(
             TabularPredictor(
@@ -144,9 +142,7 @@ class ConformalAutoGluonClassifier(ConformalClassifier):
 
         training_data_, calibration_data_ = train_test_split(X, test_size=calibration_size)
 
-        X_calibration = calibration_data_[
-            [column for column in calibration_data_.columns if column != self._target_column]
-        ]
+        X_calibration = calibration_data_[[column for column in calibration_data_.columns if column != self._target_column]]
 
         # later on, we expect it to be a NDArray
         y_calibration = calibration_data_[self._target_column].to_numpy()

@@ -5,7 +5,6 @@ from logging import getLogger
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import pandas as pd
 from sklearn.utils.validation import check_is_fitted
 
 from .utils import calculate_q_hat, check_in_range
@@ -64,13 +63,13 @@ class ConformalPredictor(ABC):
         return self
 
     @abstractmethod
-    def predict(  # type: ignore[return]
+    def predict(
         self,
         X: ArrayLike,
         confidence_level: float,
         predict_params: dict = {},
         **kwargs: dict[str, Any],
-    ) -> NDArray:
+    ) -> tuple[NDArray, NDArray]:
         check_in_range(confidence_level, "confidence_level")
         check_is_fitted(self, attributes=["calibration_nonconformity_scores_"])
 
@@ -132,13 +131,11 @@ class ConformalClassifier(ConformalPredictor):
 
         if self._conditional:
             self.calibration_nonconformity_scores_ = {
-                label: nonconformity_scores[y_calibration == label, index]
-                for label, index in self.label_to_index_.items()
+                label: nonconformity_scores[y_calibration == label, index] for label, index in self.label_to_index_.items()
             }
         else:
             self.calibration_nonconformity_scores_ = {
-                label: nonconformity_scores[range(len(y_calibration)), index]
-                for label, index in self.label_to_index_.items()
+                label: nonconformity_scores[range(len(y_calibration)), index] for label, index in self.label_to_index_.items()
             }
 
         return self
@@ -164,7 +161,7 @@ class ConformalClassifier(ConformalPredictor):
         confidence_level: float,
         predict_params: dict = {},
         **kwargs: dict[str, Any],
-    ) -> NDArray:
+    ) -> tuple[NDArray, NDArray]:
         check_is_fitted(self, attributes=["label_to_index_", "index_to_label_"])
 
         super().predict(
@@ -173,9 +170,6 @@ class ConformalClassifier(ConformalPredictor):
             predict_params=predict_params,
             kwargs=kwargs,
         )
-
-        sorted = kwargs.get("sorted", True)
-        allow_empty_set = kwargs.get("allow_empty_set", True)
 
         y_hat, nonconformity_scores = self._predict_and_calculate_nonconformity_scores(
             X=X,
@@ -199,29 +193,7 @@ class ConformalClassifier(ConformalPredictor):
                 y_hats_if_in_prediction_set[sample_mask, class_index] = y_hat[sample_mask, class_index]
                 prediction_sets[sample_mask, class_index] = label
 
-            if not allow_empty_set:
-                # enforce prediction set is at leas of size 1
-                prediction_sets[y_prediction == label, class_index] = label
-
-        if sorted:
-            # descending sort the classes based on their y_hat predictions
-            sorted_args = np.argsort(y_hats_if_in_prediction_set, axis=1)
-            sorted_args = sorted_args[:, ::-1]
-            sorted_prediction_sets_as_lists = np.take_along_axis(prediction_sets, sorted_args, axis=1).tolist()
-
-            # remove `NA`s so that ...
-            prediction_sets_as_lists = [
-                [prediction for prediction in list_of_prediction_sets if not pd.isna(prediction)]
-                for list_of_prediction_sets in sorted_prediction_sets_as_lists
-            ]
-
-            # .. we can now move them to the end of the prediction sets and maintain numpy arrays
-            # since it's no longer possible to use rows in matrices with different length
-            prediction_sets = self._create_numpy_array_for_labels_dtype(shape=nonconformity_scores.shape)
-            for idx in range(len(prediction_sets_as_lists)):
-                prediction_sets[idx, 0 : len(prediction_sets_as_lists[idx])] = prediction_sets_as_lists[idx]
-
-        return prediction_sets
+        return prediction_sets, y_prediction
 
     @abstractmethod
     def _predict_and_calculate_nonconformity_scores(
@@ -288,7 +260,7 @@ class ConformalRegressor(ConformalPredictor):
         confidence_level: float,
         predict_params: dict = {},
         **kwargs: dict[str, Any],
-    ) -> NDArray:
+    ) -> tuple[NDArray, NDArray]:
         super().predict(
             X=X,
             confidence_level=confidence_level,
@@ -306,7 +278,7 @@ class ConformalRegressor(ConformalPredictor):
         y_hat_lower_bound = y_hat - half_interval
         y_hat_upper_bound = y_hat + half_interval
 
-        return np.stack((y_hat_lower_bound, y_hat, y_hat_upper_bound), axis=1)
+        return np.stack((y_hat_lower_bound, y_hat_upper_bound), axis=1), y_hat
 
     @abstractmethod
     def _predict_and_calculate_half_interval(
@@ -371,7 +343,7 @@ class ConformalQuantileRegressor(ConformalPredictor):
         confidence_level: float | None = None,
         predict_params: dict = {},
         **kwargs: dict[str, Any],
-    ) -> NDArray:
+    ) -> tuple[NDArray, NDArray]:
         super().predict(
             X=X,
             confidence_level=confidence_level if confidence_level is not None else 0.5,
@@ -388,9 +360,10 @@ class ConformalQuantileRegressor(ConformalPredictor):
         y_hat_quantiles = np.asarray(y_hat_quantiles)
 
         y_hat_lower_bound = y_hat_quantiles[:, 0] - half_interval
+        y_hat = y_hat_quantiles[:, 1]
         y_hat_upper_bound = y_hat_quantiles[:, 2] + half_interval
 
-        return np.stack((y_hat_lower_bound, y_hat_quantiles[:, 1], y_hat_upper_bound), axis=1)
+        return np.stack((y_hat_lower_bound, y_hat_upper_bound), axis=1), y_hat
 
     @abstractmethod
     def _predict_and_calculate_half_interval(
