@@ -1,0 +1,6 @@
+{
+  "baseline_error": 0.22399999999999998,
+  "error_features_error": 0.274,
+  "cleaned_error": 0.30000000000000004,
+  "task": "classification"
+}
