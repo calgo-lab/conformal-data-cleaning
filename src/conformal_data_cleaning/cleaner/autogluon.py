@@ -115,7 +115,7 @@ class ConformalAutoGluonCleaner(BaseCleaner):
             # outlier if value is not in prediction set or prediction set is empty
             if column in self._categorical_columns:
                 outliers[column] = [
-                    False
+                    True  ### Modified -- New code says: If prediction set is empty -> have outlier
                     # to calculate the "size" of a prediction set, we need to count non-null values
                     if np.count_nonzero(~pd.isna(prediction_set)) == 0
                     else value not in prediction_set
