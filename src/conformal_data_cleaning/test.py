@@ -12,7 +12,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, mean_squared_error
+from sklearn.metrics import f1_score, mean_squared_error
 from sklearn.model_selection import train_test_split
 from conformal_data_cleaning.cleaner.autogluon import ConformalAutoGluonCleaner
 
@@ -90,8 +90,9 @@ def evaluate_model(model, X_test, y_test, task):
     preds = model.predict(X_test)
 
     if task == "classification":
-        acc = accuracy_score(y_test, preds)
-        return 1 - acc  # error
+        # compute F1 (macro by default; you can change to 'micro' or 'weighted' if needed)
+        f1 = f1_score(y_test, preds, average='macro')
+        return f1  # return "error" for optimization purposes
     else:
         rmse = np.sqrt(mean_squared_error(y_test, preds))
         return rmse
@@ -136,22 +137,26 @@ def process_dataset(df, cleaner_cls):
     # -------------------------
     # B) Error features model
     # -------------------------
-    X_test_errored, _ = create_errors(X_test, error_rate=0.5)
+    X_test_errored, _ = create_errors(X_test, error_rate=0.25)
     error_features_err = evaluate_model(model, X_test_errored, y_test, task)
 
     # -------------------------
     # C) Cleaned model
     # -------------------------
+    model_hps = {
+        "hyperparameters": {
+            'RF': {}
+    }}
     cleaner = cleaner_cls(confidence_level=0.999, seed=42)
-    fit_cleaner = cleaner.fit(X_train)
+    fit_cleaner = cleaner.fit(X_train, ci_ag_fit_params=model_hps)  # Use subset of models with fast parameters via a parameter: ci_ag_predictor_params
     X_test_cleaned, _ = fit_cleaner.transform(X_test_errored)
 
     cleaned_err = evaluate_model(model, X_test_cleaned, y_test, task)
 
     return {
-        "baseline_error": baseline_err,
-        "error_features_error": error_features_err,
-        "cleaned_error": cleaned_err,
+        "baseline_f1": baseline_err,
+        "error_features_f1": error_features_err,
+        "cleaned_f1": cleaned_err,
         "task": task,
     }
 
