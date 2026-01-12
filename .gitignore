@@ -221,6 +221,10 @@ pyrightconfig.json
 
 
 src/conformal_data_cleaning/AutogluonModels/
-src/conformal_data_cleaning/AutogluonModels/
-src/conformal_data_cleaning/AutogluonModels/
-src/conformal_data_cleaning/AutogluonModels/
+
+pod.yaml
+pvc.yaml
+src/conformal_data_cleaning/*.json
+src/conformal_data_cleaning/test.py
+.python-version
+src/conformal_data_cleaning/test.ipynb
