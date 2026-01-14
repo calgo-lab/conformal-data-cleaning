@@ -148,7 +148,7 @@ class ConformalAutoGluonCleaner(BaseCleaner):
             missing_mask = data[column].isna()
             if missing_mask.any():
                 _, y_prediction = self._make_prediction(data=data[missing_mask], column=column)
-
-                data.loc[missing_mask, column] = y_prediction
+                preds = pd.Series(y_prediction, index=data[missing_mask].index)
+                data.loc[missing_mask, column] = preds
 
         return data
