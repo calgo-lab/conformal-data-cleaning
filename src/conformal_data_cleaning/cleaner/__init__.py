@@ -1,3 +1,5 @@
-from conformal_data_cleaning import setup_logger
+from .conformal_forest import ConformalForestCleaner
+from .forest import ForestCleaner
+from .precision_forest import PrecisionForestCleaner
 
-setup_logger(__name__)
+__all__ = ["ConformalForestCleaner", "ForestCleaner", "PrecisionForestCleaner"]

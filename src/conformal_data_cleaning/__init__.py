@@ -1,5 +1,13 @@
+from __future__ import annotations
+
 import os
 from logging import Formatter, StreamHandler, getLogger
+
+import numpy as np
+
+
+def seed_and_get_generator(seed: int | None) -> np.random.Generator:
+    return np.random.default_rng(seed=seed) if seed is not None else np.random.default_rng()
 
 
 def setup_logger(name: str) -> None:
@@ -12,7 +20,7 @@ def setup_logger(name: str) -> None:
     logger = getLogger(name)
     logger.setLevel(level)
     handler = StreamHandler()
-    formatter = Formatter("%(asctime)s - %(levelname)s - %(name)s: %(message)s")
+    formatter = Formatter("[%(levelname)s] %(name)s:%(lineno)d - %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 

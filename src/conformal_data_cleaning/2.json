@@ -1,6 +1,0 @@
-{
-  "baseline_f1": 0.5220361887199302,
-  "error_features_f1": 0.4962197195654048,
-  "cleaned_f1": 0.47332249861218695,
-  "task": "classification"
-}

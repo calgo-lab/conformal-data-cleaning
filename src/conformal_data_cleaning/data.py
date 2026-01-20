@@ -12,7 +12,53 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
 from enum import Enum
+from logging import getLogger
 from typing import TYPE_CHECKING
+
+import openml
+
+from config import DATA_PATH, OPENML_IDS
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+target_column_name = "target"
+logger = getLogger(__name__)
+
+
+def _fetch_and_save_datasets(data_path: Path = DATA_PATH) -> None:
+    msg = f"Saving datasets to '{data_path}'."
+    logger.debug(msg)
+
+    data_path.mkdir(parents=True, exist_ok=True)
+
+    for dataset_id in OPENML_IDS:
+        dataset_path = data_path / f"{dataset_id}.csv"
+
+        if dataset_path.exists():
+            msg = f"{dataset_id}.csv already exists. Skipping."
+            logger.debug(msg)
+
+        else:
+            msg = f"Downloading and saving dataset {dataset_id}."
+            logger.debug(msg)
+
+            dataset = openml.datasets.get_dataset(dataset_id=dataset_id)
+            data, y, _, attribute_names = dataset.get_data()
+
+            if y is not None or (any(col == target_column_name for col in data.columns) and dataset.default_target_attribute != target_column_name):
+                msg = f"There is a problem with the target column of {dataset_id}. Check before proceed!"
+                logger.error(msg)
+                continue
+
+            data.columns = attribute_names
+            data = data.rename(columns={dataset.default_target_attribute: target_column_name}, errors="raise")
+
+            data.to_csv(dataset_path, index=False)
+
+    msg = f"All datasets are ready to go in '{data_path}'."
+    logger.info(msg)
 
 
 class TaskType(Enum):
@@ -45,7 +91,7 @@ def is_categorical(column: pd.Series, n_samples: int = 1000, max_unique_fraction
     if random_generator is None:
         random_generator = np.random.default_rng()
 
-    column = np.array(column)  # ty:ignore[invalid-assignment]
+    column = np.array(column)
     n_samples = min(n_samples, len(column))
     values, counts = np.unique(column, return_counts=True)
     sample = random_generator.choice(a=values, p=counts / counts.sum(), size=n_samples)
