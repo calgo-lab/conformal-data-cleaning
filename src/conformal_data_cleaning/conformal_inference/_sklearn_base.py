@@ -4,7 +4,7 @@ from copy import deepcopy
 from logging import getLogger
 from typing import TYPE_CHECKING, Any
 
-from dissertation_experiments.predictor import Predictor
+from predictor import Predictor
 
 from ._base import ConformalClassifier, ConformalRegressor
 from .utils import calculate_q_hat, check_and_split_X_y

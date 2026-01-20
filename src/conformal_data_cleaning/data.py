@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import openml
 
-from config import DATA_PATH, OPENML_IDS
+from config import DATA_PATH, OPENML_IDS, TEST_IDS
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,7 +33,7 @@ def _fetch_and_save_datasets(data_path: Path = DATA_PATH) -> None:
 
     data_path.mkdir(parents=True, exist_ok=True)
 
-    for dataset_id in OPENML_IDS:
+    for dataset_id in TEST_IDS:
         dataset_path = data_path / f"{dataset_id}.csv"
 
         if dataset_path.exists():

@@ -12,8 +12,8 @@ from sklearn.metrics import precision_recall_curve
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from dissertation_experiments.cleaner._base import BaseCleaner
-from dissertation_experiments.config import N_JOBS
+from ._base import BaseCleaner
+from config import N_JOBS
 
 logger = getLogger(__name__)
 

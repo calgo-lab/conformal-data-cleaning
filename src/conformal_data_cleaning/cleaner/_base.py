@@ -7,12 +7,14 @@ from typing import Any
 import pandas as pd
 from sklearn.utils import Tags, TargetTags
 from sklearn.utils.validation import check_is_fitted
+import numpy as np
 
-from conformal_data_cleaning import seed_and_get_generator
 from data import split_columns_into_categorical_and_numerical
 
 logger = getLogger(__name__)
 
+def seed_and_get_generator(seed: int | None) -> np.random.Generator:
+    return np.random.default_rng(seed=seed) if seed is not None else np.random.default_rng()
 
 class CleanerError(Exception):
     """Exception raised for errors in Cleaners."""

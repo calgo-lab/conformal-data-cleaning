@@ -253,6 +253,7 @@ TABARENA_OPENML_IDS = [
     46964,
 ]
 
+TEST_IDS = [44969]
 OPENML_IDS = list(set(MECH_DETECT_OPENML_IDS + TABARENA_OPENML_IDS))
 DATA_PATH: Path = Path(getenv("DATA_PATH", Path(__file__).resolve().parent.parent.parent / "data"))
 RESULTS_PATH: Path = Path(getenv("RESULTS_PATH", Path(__file__).resolve().parent.parent.parent / "results"))
