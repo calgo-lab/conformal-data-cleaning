@@ -9,8 +9,7 @@ from . import conformal_inference
 
 __all__ = ["cleaner", "conformal_inference"]
 
-def seed_and_get_generator(seed: int | None) -> np.random.Generator:
-    return np.random.default_rng(seed=seed) if seed is not None else np.random.default_rng()
+
 
 
 def setup_logger(name: str) -> None:

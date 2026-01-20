@@ -2,8 +2,8 @@
 # 01/20/2026
 # Nick Chandler
 
-from cleaner import ConformalForestCleaner
-from cleaner._base import BaseCleaner
+from conformal_data_cleaning.cleaner import ConformalForestCleaner
+from conformal_data_cleaning.cleaner._base import BaseCleaner
 import pandas as pd
 
 

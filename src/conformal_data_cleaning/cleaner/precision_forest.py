@@ -13,7 +13,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from ._base import BaseCleaner
-from config import N_JOBS
+from conformal_data_cleaning.config import N_JOBS
 
 logger = getLogger(__name__)
 

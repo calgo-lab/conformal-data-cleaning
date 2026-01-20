@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import openml
 
-from config import DATA_PATH, OPENML_IDS, TEST_IDS
+from .config import DATA_PATH, OPENML_IDS, TEST_IDS
 
 if TYPE_CHECKING:
     from pathlib import Path

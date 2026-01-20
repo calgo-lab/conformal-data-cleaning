@@ -11,8 +11,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from cleaner._base import BaseCleaner
-from config import N_JOBS
+from ._base import BaseCleaner
+from conformal_data_cleaning.config import N_JOBS
 
 logger = getLogger(__name__)
 

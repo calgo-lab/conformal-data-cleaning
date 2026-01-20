@@ -9,7 +9,7 @@ from sklearn.utils import Tags, TargetTags
 from sklearn.utils.validation import check_is_fitted
 import numpy as np
 
-from data import split_columns_into_categorical_and_numerical
+from ..data import split_columns_into_categorical_and_numerical
 
 logger = getLogger(__name__)
 

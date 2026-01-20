@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from ._base import BaseCleaner
-from conformal_inference.sklearn_forest import (
+from conformal_data_cleaning.conformal_inference.sklearn_forest import (
     ConformalRandomForestClassifier,
     ConformalRandomForestQuantileRegressor,
 )
