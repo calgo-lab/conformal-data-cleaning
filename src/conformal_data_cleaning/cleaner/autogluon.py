@@ -125,7 +125,7 @@ class ConformalAutoGluonCleaner(BaseCleaner):
             # outlier if value is not in prediction interval, i.e., smaller than lower (index 0)
             # or larger than upper (index 1) quantile
             elif column in self._numerical_columns:
-                outliers[column] = (data[column] <= conformalized_prediction[:, 0]) | (data[column] >= conformalized_prediction[:, 1])
+                outliers[column] = (data[column] < conformalized_prediction[:, 0]) | (data[column] > conformalized_prediction[:, 1])
 
             else:
                 msg = f"Column '{column}' is neither categorical nor numerical. This should be checked when fitting and causes very likely downstream issues."
@@ -148,7 +148,7 @@ class ConformalAutoGluonCleaner(BaseCleaner):
             missing_mask = data[column].isna()
             if missing_mask.any():
                 _, y_prediction = self._make_prediction(data=data[missing_mask], column=column)
-                preds = pd.Series(y_prediction, index=data[missing_mask].index)
+                preds = pd.Series(y_prediction, index=data[missing_mask].index)  # Modified this to ensure the series are using the same index.
                 data.loc[missing_mask, column] = preds
 
         return data
