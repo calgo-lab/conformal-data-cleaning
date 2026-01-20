@@ -6,8 +6,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from dissertation_experiments.cleaner._base import BaseCleaner
-from dissertation_experiments.conformal_inference.sklearn_forest import (
+from cleaner._base import BaseCleaner
+from conformal_inference.sklearn_forest import (
     ConformalRandomForestClassifier,
     ConformalRandomForestQuantileRegressor,
 )

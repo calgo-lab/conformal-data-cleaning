@@ -8,8 +8,8 @@ import pandas as pd
 from sklearn.utils import Tags, TargetTags
 from sklearn.utils.validation import check_is_fitted
 
-from dissertation_experiments import seed_and_get_generator
-from dissertation_experiments.data import split_columns_into_categorical_and_numerical
+from conformal_data_cleaning import seed_and_get_generator
+from data import split_columns_into_categorical_and_numerical
 
 logger = getLogger(__name__)
 

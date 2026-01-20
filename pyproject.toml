@@ -16,6 +16,7 @@ dependencies = [
     "typing-extensions>=4.15.0",
     "typer-slim>=0.20.0",
     "openml>=0.15.1",
+    "quantile-forest>=1.4.1",
 ]
 
 [project.scripts]

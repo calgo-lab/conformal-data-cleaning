@@ -13,3 +13,7 @@ This solution is far better since we just commit and use random forest (which is
 i.e. Is theoretically "better" with no empirical verification better than theoretically "worse" with experimental verification.
 
 MVP first, optimizations (like adding AutoGluon) later.
+
+Notes:
+
+- I modified the Experiment class to interface better with the demo. That is, I wanted to spec the train and test data beforehand
