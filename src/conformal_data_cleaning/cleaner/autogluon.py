@@ -115,7 +115,7 @@ class ConformalAutoGluonCleaner(BaseCleaner):
             # outlier if value is not in prediction set or prediction set is empty
             if column in self._categorical_columns:
                 outliers[column] = [
-                    True  ### Modified -- New code says: If prediction set is empty -> have outlier
+                    False
                     # to calculate the "size" of a prediction set, we need to count non-null values
                     if np.count_nonzero(~pd.isna(prediction_set)) == 0
                     else value not in prediction_set
@@ -147,8 +147,7 @@ class ConformalAutoGluonCleaner(BaseCleaner):
 
             missing_mask = data[column].isna()
             if missing_mask.any():
-                _, y_prediction = self._make_prediction(data=data[missing_mask], column=column)
-                preds = pd.Series(y_prediction, index=data[missing_mask].index)  # Modified this to ensure the series are using the same index.
+                _, preds = self._make_prediction(data=data[missing_mask], column=column)
                 data.loc[missing_mask, column] = preds
 
         return data
