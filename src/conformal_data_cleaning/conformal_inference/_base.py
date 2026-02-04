@@ -186,7 +186,7 @@ class ConformalClassifier(ConformalPredictor):
 
             # if calibration set does not have examples for `label`,
             # `calculate_q_hat` returns `None``
-            if q_hat is not None:  ### Modified: was "if q_hat:" -- q_hat == 0.0 needs to go through here...
+            if q_hat:
                 # for now, we save both: class_label and predicted y_hat
                 # if they are smaller than q_hat
                 sample_mask = nonconformity_scores[:, class_index] < q_hat
